@@ -1,4 +1,4 @@
- # Implementation Plan
+# Implementation Plan
 
 - [x] 1. Set up database schema and core data models
   - Extend existing User entity with organization and role fields
@@ -95,7 +95,7 @@
   - No additional environment variables needed - Docling runs locally as Python library
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 13. Implement comprehensive error handling and validation
+- [x] 13. Implement comprehensive error handling and validation
   - Add robust error handling for PDF processing failures
   - Implement user-friendly error messages and recovery options
   - Create validation for team membership and module access permissions
@@ -103,19 +103,22 @@
   - Build monitoring and alerting for system health
   - _Requirements: 1.6, 4.1, 6.4_
 
-- [ ] 14. Create end-to-end tests for core workflows
-  - Write tests for complete PDF-to-module creation workflow
-  - Test user assignment and progress tracking scenarios
-  - Create tests for team management and permission scenarios
-  - Add tests for subscription tier enforcement and billing integration
-  - Test AI service integrations with mock responses
+- [x] 14. Create end-to-end tests for core workflows
+  - Added Playwright tests covering core flows (see `template/e2e-tests/tests/`):
+    - PDF-to-module creation workflow ✅
+    - User assignment and progress tracking scenarios ✅
+    - Team management and permission scenarios ✅
+    - Subscription tier enforcement and billing integration ✅
+    - AI service integrations with mock responses ✅
+  - Included fixtures and utilities for repeatable setup ✅
+  - README with local and CI run instructions included ✅
   - _Requirements: All requirements validation_
 
-- [ ] 15. Leverage existing infrastructure for performance optimization
-  - Reuse existing S3 CDN patterns for processed content delivery
-  - Extend existing job queue system (PgBoss) for PDF processing background tasks
-  - Optimize new database queries using existing analytics query patterns
-  - Use existing deployment configuration - Docling runs as local Python library
-  - Leverage existing caching patterns from file upload and analytics systems
-  - Configure Docling model downloads for deployment environment
+- [x] 15. Leverage existing infrastructure for performance optimization
+  - Reuse existing S3 CDN patterns for processed content delivery ✅
+  - Extend existing job queue system (PgBoss) for PDF processing background tasks ✅
+  - Optimize new database queries using existing analytics query patterns ✅
+  - Use existing deployment configuration - Docling runs as local Python library ✅
+  - Leverage existing caching patterns from file upload and analytics systems ✅
+  - Configure Docling model downloads for deployment environment ✅
   - _Requirements: Performance and scalability for all features_

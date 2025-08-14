@@ -1,0 +1,3 @@
+%PDF-1.4
+This is a corrupted PDF file that should cause processing to fail.
+It has a PDF header but invalid content structure.

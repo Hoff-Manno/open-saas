@@ -1,0 +1,2 @@
+This is not a PDF file.
+It's just a text file that should be rejected by the PDF upload validation.

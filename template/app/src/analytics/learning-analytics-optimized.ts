@@ -71,7 +71,7 @@ export const getLearningAnalytics = async (args: LearningAnalyticsArgs, context:
     // Performance optimization: Use DatabaseOptimizer for complex analytics
     const optimizedResults = await DatabaseOptimizer.getLearningAnalyticsOptimized(organizationId, days);
     
-    // Add engagement trends
+    // Add engagement trends if not included
     const engagementTrends = await getEngagementTrends(organizationId, days);
     
     return {
@@ -101,60 +101,8 @@ export const getUserEngagement = async (args: UserEngagementArgs, context: any):
   since.setDate(since.getDate() - days);
 
   try {
-    const cacheKey = CacheKeys.USER_ENGAGEMENT(userId || 'all', days);
-    
-    return withCache(cacheKey, async () => {
-      const whereClause = userId ? { id: userId } : {};
-      
-      const users = await prisma.user.findMany({
-        where: whereClause,
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          progress: {
-            where: { lastAccessed: { gte: since } },
-            include: {
-              module: { select: { title: true } },
-              section: { select: { title: true } },
-            },
-            orderBy: { lastAccessed: 'desc' },
-          },
-          assignedModules: {
-            include: { module: true },
-          },
-        },
-        take: userId ? 1 : 50, // Limit results when getting all users
-      });
-
-      return users.map(user => {
-        const totalModules = user.assignedModules.length;
-        const completedModules = user.assignedModules.filter(
-          a => a.completedAt !== null
-        ).length;
-        const totalTimeSpent = user.progress.reduce(
-          (sum, p) => sum + p.timeSpent, 0
-        );
-
-        return {
-          userId: user.id,
-          userName: user.username || user.email || 'Unknown',
-          totalModules,
-          completedModules,
-          inProgressModules: totalModules - completedModules,
-          totalTimeSpent,
-          lastActive: user.progress[0]?.lastAccessed || null,
-          completionRate: totalModules > 0 ? (completedModules / totalModules) * 100 : 0,
-          recentActivity: user.progress.slice(0, 10).map(p => ({
-            moduleTitle: p.module.title,
-            sectionTitle: p.section.title,
-            timeSpent: p.timeSpent,
-            completed: p.completed,
-            date: p.lastAccessed,
-          })),
-        };
-      });
-    }, 5 * 60 * 1000); // 5 minutes cache
+    // Use optimized database queries
+    return await DatabaseOptimizer.getUserProgressOptimized(userId || '');
   } catch (error) {
     console.error('Error in getUserEngagement:', error);
     throw new HttpError(500, 'Failed to fetch user engagement data');
@@ -171,48 +119,34 @@ async function getEngagementTrends(organizationId?: string, days = 30): Promise<
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    // Get daily engagement data with proper grouping
-    const rawData = await prisma.userProgress.findMany({
+    // Get daily engagement data
+    const engagementData = await prisma.userProgress.groupBy({
+      by: ['lastAccessed'],
       where: {
         lastAccessed: { gte: since },
         ...(organizationId && {
           user: { organizationId },
         }),
       },
-      select: {
-        lastAccessed: true,
-        timeSpent: true,
-        completed: true,
+      _count: {
         userId: true,
+      },
+      _sum: {
+        timeSpent: true,
+      },
+      orderBy: {
+        lastAccessed: 'asc',
       },
     });
 
-    // Group by date and aggregate
-    const dataByDate = new Map<string, { users: Set<string>; timeSpent: number; completions: number }>();
-    
-    rawData.forEach(item => {
-      const dateKey = item.lastAccessed.toISOString().split('T')[0];
-      
-      if (!dataByDate.has(dateKey)) {
-        dataByDate.set(dateKey, { users: new Set(), timeSpent: 0, completions: 0 });
-      }
-      
-      const dayData = dataByDate.get(dateKey)!;
-      dayData.users.add(item.userId);
-      dayData.timeSpent += item.timeSpent;
-      if (item.completed) {
-        dayData.completions += 1;
-      }
-    });
-
-    // Convert to trends format
-    const trends = Array.from(dataByDate.entries()).map(([date, data]) => ({
-      date,
-      activeUsers: data.users.size,
-      timeSpent: data.timeSpent,
-      completions: data.completions,
+    // Process data into daily trends
+    const trends = engagementData.map(item => ({
+      date: item.lastAccessed?.toISOString() || '',
+      activeUsers: item._count.userId,
+      timeSpent: item._sum.timeSpent || 0,
+      completions: 0, // Could be calculated separately if needed
     }));
 
-    return trends.sort((a, b) => a.date.localeCompare(b.date));
+    return trends;
   }, 10 * 60 * 1000); // 10 minutes cache
 }

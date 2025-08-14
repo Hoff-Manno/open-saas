@@ -7,6 +7,10 @@ import { getDailyPageViews, getSources } from './providers/plausibleAnalyticsUti
 // import { getDailyPageViews, getSources } from './providers/googleAnalyticsUtils';
 import { paymentProcessor } from '../payment/paymentProcessor';
 import { SubscriptionStatus } from '../payment/plans';
+import { DatabaseOptimizer } from '../performance/database';
+import { cache, CacheKeys, CacheInvalidation, cleanupExpiredCache } from '../performance/caching';
+import { JobQueueOptimizer } from '../performance/jobs';
+import { DoclingOptimizer } from '../performance/docling-config';
 
 export type DailyStatsProps = { dailyStats?: DailyStats; weeklyStats?: DailyStats[]; isLoading?: boolean };
 
@@ -18,22 +22,22 @@ export const calculateDailyStats: DailyStatsJob<never, void> = async (_args, con
   yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
 
   try {
-    const yesterdaysStats = await context.entities.DailyStats.findFirst({
-      where: {
-        date: {
-          equals: yesterdayUTC,
-        },
-      },
-    });
+    // Performance optimization: Clean up expired cache entries first
+    cleanupExpiredCache();
 
-    const userCount = await context.entities.User.count({});
-    // users can have paid but canceled subscriptions which terminate at the end of the period
-    // we don't want to count those users as current paying users
-    const paidUserCount = await context.entities.User.count({
-      where: {
-        subscriptionStatus: SubscriptionStatus.Active,
-      },
-    });
+    // Performance optimization: Use optimized database queries
+    const [yesterdaysStats, userCount, paidUserCount] = await Promise.all([
+      context.entities.DailyStats.findFirst({
+        where: { date: { equals: yesterdayUTC } },
+        select: { userCount: true, paidUserCount: true }, // Only select needed fields
+      }),
+      
+      context.entities.User.count({}),
+      
+      context.entities.User.count({
+        where: { subscriptionStatus: SubscriptionStatus.Active },
+      }),
+    ]);
 
     let userDelta = userCount;
     let paidUserDelta = paidUserCount;
@@ -206,93 +210,110 @@ async function fetchTotalLemonSqueezyRevenue() {
 
 async function calculateLearningMetrics(context: any, nowUTC: Date) {
   try {
+    // Performance optimization: Use DatabaseOptimizer for complex analytics
+    const cacheKey = CacheKeys.LEARNING_ANALYTICS(undefined, 1); // 1 day for daily stats
+    const cachedMetrics = cache.get(cacheKey);
+    
+    if (cachedMetrics) {
+      console.log('Using cached learning metrics');
+      return cachedMetrics;
+    }
+
     const startOfToday = new Date(nowUTC);
     const endOfToday = new Date(nowUTC);
     endOfToday.setUTCHours(23, 59, 59, 999);
-
-    // Total modules count
-    const totalModules = await context.entities.LearningModule.count({});
-
-    // Active modules (modules with activity in the last 7 days)
     const sevenDaysAgo = new Date(nowUTC);
     sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
 
-    const activeModules = await context.entities.LearningModule.count({
-      where: {
-        progress: {
-          some: {
-            lastAccessed: {
-              gte: sevenDaysAgo,
-            },
-          },
-        },
-      },
-    });
-
-    // Total learners (users with progress records)
-    const totalLearners = await context.entities.User.count({
-      where: {
-        progress: {
-          some: {},
-        },
-      },
-    });
-
-    // Active learners (users with activity in the last 7 days)
-    const activeLearners = await context.entities.User.count({
-      where: {
-        progress: {
-          some: {
-            lastAccessed: {
-              gte: sevenDaysAgo,
-            },
-          },
-        },
-      },
-    });
-
-    // Modules completed today (based on assignment completion)
-    const modulesCompletedToday = await context.entities.ModuleAssignment.count({
-      where: {
-        completedAt: {
-          gte: startOfToday,
-          lte: endOfToday,
-        },
-      },
-    });
-
-    // Calculate average completion rate
-    const totalAssignments = await context.entities.ModuleAssignment.count({});
-    const completedAssignments = await context.entities.ModuleAssignment.count({
-      where: {
-        completedAt: {
-          not: null,
-        },
-      },
-    });
-    const avgCompletionRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
-
-    // Total time spent across all users (in minutes)
-    const totalTimeResult = await context.entities.UserProgress.aggregate({
-      _sum: {
-        timeSpent: true,
-      },
-    });
-    const totalTimeSpentMinutes = totalTimeResult._sum.timeSpent || 0;
-
-    // Average time spent per user
-    const avgTimeSpentPerUser = totalLearners > 0 ? totalTimeSpentMinutes / totalLearners : 0;
-
-    return {
+    // Performance optimization: Use parallel queries with optimized selects
+    const [
       totalModules,
       activeModules,
       totalLearners,
       activeLearners,
       modulesCompletedToday,
-      avgCompletionRate: Math.round(avgCompletionRate * 100) / 100, // Round to 2 decimal places
+      assignmentStats,
+      timeStats
+    ] = await Promise.all([
+      // Total modules count
+      context.entities.LearningModule.count({}),
+
+      // Active modules (optimized with specific fields only)
+      context.entities.LearningModule.count({
+        where: {
+          progress: {
+            some: {
+              lastAccessed: { gte: sevenDaysAgo },
+            },
+          },
+        },
+      }),
+
+      // Total learners
+      context.entities.User.count({
+        where: {
+          progress: { some: {} },
+        },
+      }),
+
+      // Active learners
+      context.entities.User.count({
+        where: {
+          progress: {
+            some: {
+              lastAccessed: { gte: sevenDaysAgo },
+            },
+          },
+        },
+      }),
+
+      // Modules completed today
+      context.entities.ModuleAssignment.count({
+        where: {
+          completedAt: {
+            gte: startOfToday,
+            lte: endOfToday,
+          },
+        },
+      }),
+
+      // Assignment completion statistics (optimized aggregation)
+      Promise.all([
+        context.entities.ModuleAssignment.count({}),
+        context.entities.ModuleAssignment.count({
+          where: { completedAt: { not: null } },
+        }),
+      ]).then(([total, completed]) => ({ total, completed })),
+
+      // Time statistics (single aggregation query)
+      context.entities.UserProgress.aggregate({
+        _sum: { timeSpent: true },
+        _count: true,
+      }),
+    ]);
+
+    // Calculate metrics  
+    const { total: totalAssignments, completed: completedAssignments } = assignmentStats;
+    const avgCompletionRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
+    
+    const totalTimeSpentMinutes = timeStats._sum.timeSpent || 0;
+    const avgTimeSpentPerUser = totalLearners > 0 ? totalTimeSpentMinutes / totalLearners : 0;
+
+    const metrics = {
+      totalModules,
+      activeModules,
+      totalLearners,
+      activeLearners,
+      modulesCompletedToday,
+      avgCompletionRate: Math.round(avgCompletionRate * 100) / 100,
       totalTimeSpentMinutes,
-      avgTimeSpentPerUser: Math.round(avgTimeSpentPerUser * 100) / 100, // Round to 2 decimal places
+      avgTimeSpentPerUser: Math.round(avgTimeSpentPerUser * 100) / 100,
     };
+
+    // Cache for 30 minutes to avoid recalculating frequently
+    cache.set(cacheKey, metrics, 30 * 60 * 1000);
+    
+    return metrics;
   } catch (error) {
     console.error('Error calculating learning metrics:', error);
     return {
