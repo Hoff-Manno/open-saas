@@ -1,0 +1,44 @@
+# fly.toml app configuration file for server
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'pdf-learning-saas-server'
+primary_region = 'ams'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 2
+
+[env]
+  NODE_ENV = "production"
+
+# Health check configuration
+[[services.http_checks]]
+  interval = "15s"
+  timeout = "3s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+  protocol = "https"
+  tls_skip_verify = false
+
+# Server concurrency limits
+[http_service.concurrency]
+  type = "connections"
+  hard_limit = 1000
+  soft_limit = 500
+
+# Database connection will be set via secrets
+# Use: fly secrets set DATABASE_URL="your_postgres_connection_string" -a pdf-learning-saas-server
