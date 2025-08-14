@@ -56,6 +56,9 @@ export const calculateDailyStats: DailyStatsJob<never, void> = async (_args, con
 
     const { totalViews, prevDayViewsChangePercent } = await getDailyPageViews();
 
+    // Calculate learning metrics
+    const learningMetrics = await calculateLearningMetrics(context, nowUTC);
+
     let dailyStats = await context.entities.DailyStats.findUnique({
       where: {
         date: nowUTC,
@@ -74,6 +77,7 @@ export const calculateDailyStats: DailyStatsJob<never, void> = async (_args, con
           userDelta,
           paidUserDelta,
           totalRevenue,
+          ...learningMetrics,
         },
       });
     } else {
@@ -90,6 +94,7 @@ export const calculateDailyStats: DailyStatsJob<never, void> = async (_args, con
           userDelta,
           paidUserDelta,
           totalRevenue,
+          ...learningMetrics,
         },
       });
     }
@@ -196,5 +201,109 @@ async function fetchTotalLemonSqueezyRevenue() {
   } catch (error) {
     console.error('Error fetching Lemon Squeezy revenue:', error);
     throw error;
+  }
+}
+
+async function calculateLearningMetrics(context: any, nowUTC: Date) {
+  try {
+    const startOfToday = new Date(nowUTC);
+    const endOfToday = new Date(nowUTC);
+    endOfToday.setUTCHours(23, 59, 59, 999);
+
+    // Total modules count
+    const totalModules = await context.entities.LearningModule.count({});
+
+    // Active modules (modules with activity in the last 7 days)
+    const sevenDaysAgo = new Date(nowUTC);
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const activeModules = await context.entities.LearningModule.count({
+      where: {
+        progress: {
+          some: {
+            lastAccessed: {
+              gte: sevenDaysAgo,
+            },
+          },
+        },
+      },
+    });
+
+    // Total learners (users with progress records)
+    const totalLearners = await context.entities.User.count({
+      where: {
+        progress: {
+          some: {},
+        },
+      },
+    });
+
+    // Active learners (users with activity in the last 7 days)
+    const activeLearners = await context.entities.User.count({
+      where: {
+        progress: {
+          some: {
+            lastAccessed: {
+              gte: sevenDaysAgo,
+            },
+          },
+        },
+      },
+    });
+
+    // Modules completed today (based on assignment completion)
+    const modulesCompletedToday = await context.entities.ModuleAssignment.count({
+      where: {
+        completedAt: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+    });
+
+    // Calculate average completion rate
+    const totalAssignments = await context.entities.ModuleAssignment.count({});
+    const completedAssignments = await context.entities.ModuleAssignment.count({
+      where: {
+        completedAt: {
+          not: null,
+        },
+      },
+    });
+    const avgCompletionRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
+
+    // Total time spent across all users (in minutes)
+    const totalTimeResult = await context.entities.UserProgress.aggregate({
+      _sum: {
+        timeSpent: true,
+      },
+    });
+    const totalTimeSpentMinutes = totalTimeResult._sum.timeSpent || 0;
+
+    // Average time spent per user
+    const avgTimeSpentPerUser = totalLearners > 0 ? totalTimeSpentMinutes / totalLearners : 0;
+
+    return {
+      totalModules,
+      activeModules,
+      totalLearners,
+      activeLearners,
+      modulesCompletedToday,
+      avgCompletionRate: Math.round(avgCompletionRate * 100) / 100, // Round to 2 decimal places
+      totalTimeSpentMinutes,
+      avgTimeSpentPerUser: Math.round(avgTimeSpentPerUser * 100) / 100, // Round to 2 decimal places
+    };
+  } catch (error) {
+    console.error('Error calculating learning metrics:', error);
+    return {
+      totalModules: 0,
+      activeModules: 0,
+      totalLearners: 0,
+      activeLearners: 0,
+      modulesCompletedToday: 0,
+      avgCompletionRate: 0,
+      totalTimeSpentMinutes: 0,
+      avgTimeSpentPerUser: 0,
+    };
   }
 }

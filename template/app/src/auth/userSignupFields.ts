@@ -73,7 +73,15 @@ const googleDataSchema = z.object({
   profile: z.object({
     email: z.string(),
     email_verified: z.boolean(),
+    name: z.string().optional(),
+    given_name: z.string().optional(),
+    family_name: z.string().optional(),
   }),
+  request: z.object({
+    query: z.object({
+      invitation: z.string().optional(),
+    }).optional(),
+  }).optional(),
 });
 
 export const getGoogleUserFields = defineUserSignupFields({
@@ -83,7 +91,8 @@ export const getGoogleUserFields = defineUserSignupFields({
   },
   username: (data) => {
     const googleData = googleDataSchema.parse(data);
-    return googleData.profile.email;
+    // Use name if available, otherwise fall back to email
+    return googleData.profile.name || googleData.profile.email;
   },
   isAdmin: (data) => {
     const googleData = googleDataSchema.parse(data);
@@ -92,11 +101,57 @@ export const getGoogleUserFields = defineUserSignupFields({
     }
     return adminEmails.includes(googleData.profile.email);
   },
+  // organizationId: (data) => {
+  //   const googleData = googleDataSchema.parse(data);
+  //   
+  //   // Check if there's an invitation token in the query parameters
+  //   const invitationToken = googleData.request?.query?.invitation;
+  //   if (invitationToken) {
+  //     try {
+  //       const { organizationId, email } = verifyInvitationToken(invitationToken);
+  //       // Verify the invitation is for this email
+  //       if (email === googleData.profile.email) {
+  //         return organizationId;
+  //       }
+  //     } catch (error) {
+  //       console.error('Invalid invitation token during Google signup:', error);
+  //       // Continue without organization assignment
+  //     }
+  //   }
+  //   
+  //   return null;
+  // },
+  role: (data) => {
+    const googleData = googleDataSchema.parse(data);
+    
+    // Check if there's an invitation token in the query parameters
+    const invitationToken = googleData.request?.query?.invitation;
+    if (invitationToken) {
+      try {
+        const { role, email } = verifyInvitationToken(invitationToken);
+        // Verify the invitation is for this email
+        if (email === googleData.profile.email) {
+          return role;
+        }
+      } catch (error) {
+        console.error('Invalid invitation token during Google signup:', error);
+        // Continue with default role
+      }
+    }
+    
+    // Default role for new users
+    return 'LEARNER';
+  },
 });
 
 export function getGoogleAuthConfig() {
   return {
     scopes: ['profile', 'email'], // must include at least 'profile' for Google
+    additionalParams: {
+      // Allow invitation token to be passed through the auth flow
+      access_type: 'online',
+      prompt: 'select_account',
+    },
   };
 }
 
@@ -135,3 +190,23 @@ export function getDiscordAuthConfig() {
     scopes: ['identify', 'email'],
   };
 }
+
+// Helper function to verify invitation tokens
+function verifyInvitationToken(token: string): { email: string; organizationId: string; role: 'ADMIN' | 'LEARNER' } {
+  try {
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+    const { email, organizationId, role, timestamp } = decoded;
+
+    // Check if token is expired (7 days)
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - timestamp > SEVEN_DAYS) {
+      throw new Error('Token expired');
+    }
+
+    return { email, organizationId, role };
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+}
+
+

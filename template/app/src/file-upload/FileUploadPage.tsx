@@ -106,8 +106,8 @@ export default function FileUploadPage() {
           </h2>
         </div>
         <p className='mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-muted-foreground'>
-          This is an example file upload page using AWS S3. Maybe your app needs this. Maybe it doesn't. But a
-          lot of people asked for this feature, so here you go 🤝
+          This is an example file upload page using AWS S3. For PDF learning modules, use the dedicated{' '}
+          <a href="/pdf-upload" className="text-primary hover:underline">PDF Upload page</a>.
         </p>
         <Card className='my-8'>
           <CardContent className='space-y-10 my-10 py-8 px-4 mx-auto sm:max-w-lg'>

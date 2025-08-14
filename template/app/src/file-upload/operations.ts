@@ -8,8 +8,10 @@ import {
 } from 'wasp/server/operations';
 
 import { getUploadFileSignedURLFromS3, getDownloadFileSignedURLFromS3 } from './s3Utils';
+import { getPDFUploadSignedURLFromS3, getPDFDownloadSignedURLFromS3 } from './pdfS3Utils';
 import { ensureArgsSchemaOrThrowHttpError } from '../server/validation';
 import { ALLOWED_FILE_TYPES } from './validation';
+import { ALLOWED_PDF_FILE_TYPES } from './pdfValidation';
 
 const createFileInputSchema = z.object({
   fileType: z.enum(ALLOWED_FILE_TYPES),
@@ -79,4 +81,72 @@ export const getDownloadFileSignedURL: GetDownloadFileSignedURL<
 > = async (rawArgs, _context) => {
   const { key } = ensureArgsSchemaOrThrowHttpError(getDownloadFileSignedURLInputSchema, rawArgs);
   return await getDownloadFileSignedURLFromS3({ key });
+};
+
+// PDF-specific operations
+const createPDFFileInputSchema = z.object({
+  fileType: z.enum(ALLOWED_PDF_FILE_TYPES),
+  fileName: z.string().nonempty(),
+});
+
+type CreatePDFFileInput = z.infer<typeof createPDFFileInputSchema>;
+
+export const createPDFFile: CreateFile<
+  CreatePDFFileInput,
+  {
+    s3UploadUrl: string;
+    s3UploadFields: Record<string, string>;
+  }
+> = async (rawArgs, context) => {
+  if (!context.user) {
+    throw new HttpError(401);
+  }
+
+  const { fileType, fileName } = ensureArgsSchemaOrThrowHttpError(createPDFFileInputSchema, rawArgs);
+
+  const { s3UploadUrl, s3UploadFields, key } = await getPDFUploadSignedURLFromS3({
+    fileType,
+    fileName,
+    userId: context.user.id,
+  });
+
+  await context.entities.File.create({
+    data: {
+      name: fileName,
+      key,
+      uploadUrl: s3UploadUrl,
+      type: fileType,
+      user: { connect: { id: context.user.id } },
+    },
+  });
+
+  return {
+    s3UploadUrl,
+    s3UploadFields,
+  };
+};
+
+export const getAllPDFFilesByUser: GetAllFilesByUser<void, File[]> = async (_args, context) => {
+  if (!context.user) {
+    throw new HttpError(401);
+  }
+  return context.entities.File.findMany({
+    where: {
+      user: {
+        id: context.user.id,
+      },
+      type: 'application/pdf', // Only return PDF files
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
+export const getPDFDownloadSignedURL: GetDownloadFileSignedURL<
+  GetDownloadFileSignedURLInput,
+  string
+> = async (rawArgs, _context) => {
+  const { key } = ensureArgsSchemaOrThrowHttpError(getDownloadFileSignedURLInputSchema, rawArgs);
+  return await getPDFDownloadSignedURLFromS3({ key });
 };

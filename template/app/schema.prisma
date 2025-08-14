@@ -18,14 +18,24 @@ model User {
   paymentProcessorUserId    String?         @unique
   lemonSqueezyCustomerPortalUrl String?     // You can delete this if you're not using Lemon Squeezy as your payments processor.
   subscriptionStatus        String?         // 'active', 'cancel_at_period_end', 'past_due', 'deleted'
-  subscriptionPlan          String?         // 'hobby', 'pro'
+  subscriptionPlan          String?         // 'starter', 'professional', 'enterprise'
   datePaid                  DateTime?
   credits                   Int             @default(3)
+
+  // PDF Learning fields
+  organizationId            String?
+  role                      UserRole        @default(LEARNER)
 
   gptResponses              GptResponse[]
   contactFormMessages       ContactFormMessage[]
   tasks                     Task[]
   files                     File[]
+  
+  // PDF Learning relations
+  createdModules            LearningModule[] @relation("ModuleCreator")
+  assignedModules           ModuleAssignment[]
+  progress                  UserProgress[]
+  organization              Organization?   @relation(fields: [organizationId], references: [id])
 }
 
 model GptResponse {
@@ -77,6 +87,16 @@ model DailyStats {
   totalRevenue                     Float           @default(0)
   totalProfit                      Float           @default(0)
 
+  // Learning metrics
+  totalModules                     Int             @default(0)
+  activeModules                    Int             @default(0)
+  totalLearners                    Int             @default(0)
+  activeLearners                   Int             @default(0)
+  modulesCompletedToday            Int             @default(0)
+  avgCompletionRate                Float           @default(0)
+  totalTimeSpentMinutes            Int             @default(0)
+  avgTimeSpentPerUser              Float           @default(0)
+
   sources                          PageViewSource[]
 }
 
@@ -109,4 +129,98 @@ model ContactFormMessage {
   content                   String
   isRead                    Boolean         @default(false)
   repliedAt                 DateTime?
+}
+// PDF Learning SaaS Enums
+enum UserRole {
+  ADMIN
+  LEARNER
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SubscriptionTier {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// PDF Learning SaaS Models
+model Organization {
+  id                String              @id @default(uuid())
+  name              String
+  subscriptionTier  SubscriptionTier
+  maxModules        Int?
+  maxUsers          Int?
+  createdAt         DateTime            @default(now())
+  
+  users             User[]
+  modules           LearningModule[]
+}
+
+model LearningModule {
+  id                String              @id @default(uuid())
+  title             String
+  description       String?
+  originalFileName  String
+  fileKey           String              // S3 key for original PDF
+  processedContent  Json                // Structured content from Docling
+  processingStatus  ProcessingStatus    @default(PENDING)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  creatorId         String
+  organizationId    String
+  
+  sections          ModuleSection[]
+  assignments       ModuleAssignment[]
+  progress          UserProgress[]
+  creator           User                @relation("ModuleCreator", fields: [creatorId], references: [id])
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+}
+
+model ModuleSection {
+  id                String              @id @default(uuid())
+  moduleId          String
+  title             String
+  content           String              // Markdown content
+  orderIndex        Int
+  estimatedMinutes  Int?
+  
+  module            LearningModule      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress          UserProgress[]
+}
+
+model ModuleAssignment {
+  id                String              @id @default(uuid())
+  userId            String
+  moduleId          String
+  assignedAt        DateTime            @default(now())
+  dueDate           DateTime?
+  completedAt       DateTime?
+  
+  user              User                @relation(fields: [userId], references: [id])
+  module            LearningModule      @relation(fields: [moduleId], references: [id])
+  
+  @@unique([userId, moduleId])
+}
+
+model UserProgress {
+  id                String              @id @default(uuid())
+  userId            String
+  moduleId          String
+  sectionId         String
+  completed         Boolean             @default(false)
+  timeSpent         Int                 @default(0) // minutes
+  lastAccessed      DateTime            @default(now())
+  bookmarkPosition  String?             // JSON for scroll position, etc.
+  
+  user              User                @relation(fields: [userId], references: [id])
+  module            LearningModule      @relation(fields: [moduleId], references: [id])
+  section           ModuleSection       @relation(fields: [sectionId], references: [id])
+  
+  @@unique([userId, moduleId, sectionId])
 }

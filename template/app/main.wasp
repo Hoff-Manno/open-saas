@@ -3,22 +3,22 @@ app OpenSaaS {
     version: "^0.17.0"
   },
 
-  title: "My Open SaaS App",
+  title: "PDF Learning SaaS - Transform Documents into Interactive Learning",
 
   head: [
     "<link rel='icon' href='/favicon.ico' />",
     "<meta charset='utf-8' />",
-    "<meta name='description' content='Your apps main description and features.' />",
-    "<meta name='author' content='Your (App) Name' />",
-    "<meta name='keywords' content='saas, solution, product, app, service' />",
+    "<meta name='description' content='Transform your PDF documents into interactive learning modules with AI-powered processing, team management, and progress tracking.' />",
+    "<meta name='author' content='PDF Learning SaaS' />",
+    "<meta name='keywords' content='pdf, learning, training, ai, education, team management, progress tracking, docling, saas' />",
     
     "<meta property='og:type' content='website' />",
-    "<meta property='og:title' content='Your Open SaaS App' />",
-    "<meta property='og:site_name' content='Your Open SaaS App' />",
-    "<meta property='og:url' content='https://your-saas-app.com' />",
-    "<meta property='og:description' content='Your apps main description and features.' />",
-    "<meta property='og:image' content='https://your-saas-app.com/public-banner.webp' />",
-    "<meta name='twitter:image' content='https://your-saas-app.com/public-banner.webp' />",
+    "<meta property='og:title' content='PDF Learning SaaS - AI-Powered Document Learning' />",
+    "<meta property='og:site_name' content='PDF Learning SaaS' />",
+    "<meta property='og:url' content='https://your-pdf-learning-app.com' />",
+    "<meta property='og:description' content='Transform PDFs into interactive learning experiences. AI-powered processing, team management, and comprehensive progress tracking.' />",
+    "<meta property='og:image' content='https://your-pdf-learning-app.com/public-banner.webp' />",
+    "<meta name='twitter:image' content='https://your-pdf-learning-app.com/public-banner.webp' />",
     "<meta name='twitter:image:width' content='800' />",
     "<meta name='twitter:image:height' content='400' />",
     "<meta name='twitter:card' content='summary_large_image' />",
@@ -38,7 +38,7 @@ app OpenSaaS {
       //   (RequestPasswordReset(Route|Page), PasswordReset(Route|Page), EmailVerification(Route|Page))
       email: {
         fromField: {
-          name: "Open SaaS App",
+          name: "PDF Learning SaaS",
           email: "me@example.com"
         },
         emailVerification: {
@@ -51,11 +51,11 @@ app OpenSaaS {
         },
         userSignupFields: import { getEmailUserFields } from "@src/auth/userSignupFields",
       },
-      // Uncomment to enable Google Auth (check https://wasp.sh/docs/auth/social-auth/google for setup instructions):
-      // google: { // Guide for setting up Auth via Google
-      //   userSignupFields: import { getGoogleUserFields } from "@src/auth/userSignupFields",
-      //   configFn: import { getGoogleAuthConfig } from "@src/auth/userSignupFields",
-      // },
+      // Google Auth for team access
+      google: { // Guide for setting up Auth via Google
+        userSignupFields: import { getGoogleUserFields } from "@src/auth/userSignupFields",
+        configFn: import { getGoogleAuthConfig } from "@src/auth/userSignupFields",
+      },
       // Uncomment to enable GitHub Auth (check https://wasp.sh/docs/auth/social-auth/github for setup instructions):
       // gitHub: {
       //   userSignupFields: import { getGitHubUserFields } from "@src/auth/userSignupFields",
@@ -68,7 +68,10 @@ app OpenSaaS {
       // }
     },
     onAuthFailedRedirectTo: "/login",
-    onAuthSucceededRedirectTo: "/demo-app",
+    onAuthSucceededRedirectTo: "/pdf-learning",
+    // Auth hooks for team invitation handling
+    onAfterSignup: import { onAfterSignup } from "@src/auth/hooks",
+    onBeforeOAuthRedirect: import { onBeforeOAuthRedirect } from "@src/auth/hooks",
   },
 
   db: {
@@ -89,7 +92,7 @@ app OpenSaaS {
     //   Once you are ready for production, switch to e.g. "SendGrid" or "Mailgun" providers. Check out https://docs.opensaas.sh/guides/email-sending/ .
     provider: Dummy,
     defaultFrom: {
-      name: "Open SaaS App",
+      name: "PDF Learning SaaS",
       // When using a real provider, e.g. SendGrid, you must use the same email address that you configured your account to send out emails with!
       email: "me@example.com"
     },
@@ -126,6 +129,12 @@ route EmailVerificationRoute { path: "/email-verification", to: EmailVerificatio
 page EmailVerificationPage {
   component: import { EmailVerificationPage } from "@src/auth/email-and-pass/EmailVerificationPage",
 }
+
+route AcceptInvitationRoute { path: "/accept-invitation", to: AcceptInvitationPage }
+page AcceptInvitationPage {
+  authRequired: true,
+  component: import { AcceptInvitationPage } from "@src/team/AcceptInvitationPage",
+}
 //#endregion
 
 //#region User
@@ -144,44 +153,59 @@ action updateIsUserAdminById {
   fn: import { updateIsUserAdminById } from "@src/user/operations",
   entities: [User]
 }
+
+//#region Team Management
+action createTeamInvitation {
+  fn: import { createTeamInvitation } from "@src/team/operations",
+  entities: [User, Organization]
+}
+
+action acceptTeamInvitation {
+  fn: import { acceptTeamInvitation } from "@src/team/operations",
+  entities: [User, Organization]
+}
+
+action assignModuleToUsers {
+  fn: import { assignModuleToUsers } from "@src/team/operations",
+  entities: [User, LearningModule, ModuleAssignment, Organization]
+}
+
+query getTeamUsers {
+  fn: import { getTeamUsers } from "@src/team/operations",
+  entities: [User]
+}
+
+action updateUserRole {
+  fn: import { updateUserRole } from "@src/team/operations",
+  entities: [User]
+}
 //#endregion
 
-//#region Demo AI App
-route DemoAppRoute { path: "/demo-app", to: DemoAppPage }
-page DemoAppPage {
+//#region PDF Learning Hub
+route PDFLearningRoute { path: "/pdf-learning", to: PDFLearningDashboard }
+page PDFLearningDashboard {
   authRequired: true,
-  component: import DemoAppPage from "@src/demo-ai-app/DemoAppPage"
+  component: import PDFLearningDashboard from "@src/pdf-learning/PDFLearningDashboard"
 }
 
-action generateGptResponse {
-  fn: import { generateGptResponse } from "@src/demo-ai-app/operations",
-  entities: [User, Task, GptResponse]
+// Enhanced AI operations for PDF learning
+action generateLearningQuestions {
+  fn: import { generateLearningQuestions } from "@src/pdf-learning/operations",
+  entities: [User]
 }
 
-action createTask {
-  fn: import { createTask } from "@src/demo-ai-app/operations",
-  entities: [Task]
+action generateContentSummary {
+  fn: import { generateContentSummary } from "@src/pdf-learning/operations", 
+  entities: [User]
 }
 
-action deleteTask {
-  fn: import { deleteTask } from "@src/demo-ai-app/operations",
-  entities: [Task]
+action enrichTechnicalContent {
+  fn: import { enrichTechnicalContent } from "@src/pdf-learning/operations",
+  entities: [User]
 }
 
-action updateTask {
-  fn: import { updateTask } from "@src/demo-ai-app/operations",
-  entities: [Task]
-}
-
-query getGptResponses {
-  fn: import { getGptResponses } from "@src/demo-ai-app/operations",
-  entities: [User, GptResponse]
-}
-
-query getAllTasksByUser {
-  fn: import { getAllTasksByUser } from "@src/demo-ai-app/operations",
-  entities: [Task]
-}
+// Additional operations can be added here as needed
+// processPDFToModule and getUserDashboardData can be implemented later
 //#endregion
 
 //#region Payment
@@ -221,6 +245,12 @@ page FileUploadPage {
   component: import FileUpload from "@src/file-upload/FileUploadPage"
 }
 
+route PDFUploadRoute { path: "/pdf-upload", to: PDFUploadPage }
+page PDFUploadPage {
+  authRequired: true,
+  component: import PDFUpload from "@src/file-upload/PDFUploadPage"
+}
+
 action createFile {
   fn: import { createFile } from "@src/file-upload/operations",
   entities: [User, File]
@@ -235,12 +265,172 @@ query getDownloadFileSignedURL {
   fn: import { getDownloadFileSignedURL } from "@src/file-upload/operations",
   entities: [User, File]
 }
+
+// PDF-specific operations for learning modules
+action createPDFFile {
+  fn: import { createPDFFile } from "@src/file-upload/operations",
+  entities: [User, File]
+}
+
+query getAllPDFFilesByUser {
+  fn: import { getAllPDFFilesByUser } from "@src/file-upload/operations",
+  entities: [User, File]
+}
+
+query getPDFDownloadSignedURL {
+  fn: import { getPDFDownloadSignedURL } from "@src/file-upload/operations",
+  entities: [User, File]
+}
+//#endregion
+
+//#region PDF Processing
+action processPDF {
+  fn: import { processPDF } from "@src/pdf-processing/operations",
+  entities: [User, File, LearningModule]
+}
+
+query getProcessingStatus {
+  fn: import { getProcessingStatus } from "@src/pdf-processing/operations",
+  entities: [User, LearningModule]
+}
+
+query getUserLearningModules {
+  fn: import { getUserLearningModules } from "@src/pdf-processing/operations",
+  entities: [User, LearningModule]
+}
+
+action retryPDFProcessing {
+  fn: import { retryPDFProcessing } from "@src/pdf-processing/operations",
+  entities: [User, LearningModule]
+}
+
+query checkDoclingHealth {
+  fn: import { checkDoclingHealth } from "@src/pdf-processing/operations",
+  entities: [User]
+}
+//#endregion
+
+//#region Learning AI Operations (Enhanced)
+// These operations are now handled by the PDF Learning module
+// with enhanced functionality and better integration
+route AILearningDemoRoute { path: "/ai-learning-demo", to: AILearningDemoPage }
+page AILearningDemoPage {
+  authRequired: true,
+  component: import AILearningDemo from "@src/learning-ai/AILearningDemo"
+}
+//#endregion
+
+//#region Learning Module Management
+action createModule {
+  fn: import { createModule } from "@src/learning-modules/operations",
+  entities: [User, LearningModule]
+}
+
+action updateModule {
+  fn: import { updateModule } from "@src/learning-modules/operations",
+  entities: [User, LearningModule]
+}
+
+action deleteModule {
+  fn: import { deleteModule } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleAssignment]
+}
+
+action createSection {
+  fn: import { createSection } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection]
+}
+
+action updateSection {
+  fn: import { updateSection } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection]
+}
+
+action deleteSection {
+  fn: import { deleteSection } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress]
+}
+
+action reorderSections {
+  fn: import { reorderSections } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection]
+}
+
+query getOrganizationModules {
+  fn: import { getOrganizationModules } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection]
+}
+
+query getModuleDetails {
+  fn: import { getModuleDetails } from "@src/learning-modules/operations",
+  entities: [User, LearningModule, ModuleSection, Organization]
+}
+
+// Progress tracking operations
+action updateProgress {
+  fn: import { updateProgress } from "@src/learning-modules/progress-operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress]
+}
+
+query getModuleProgress {
+  fn: import { getModuleProgress } from "@src/learning-modules/progress-operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress]
+}
+
+query getUserProgressSummary {
+  fn: import { getUserProgressSummary } from "@src/learning-modules/progress-operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress, ModuleAssignment]
+}
+
+query getRecentLearningActivity {
+  fn: import { getRecentLearningActivity } from "@src/learning-modules/progress-operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress]
+}
+
+action bulkUpdateProgress {
+  fn: import { bulkUpdateProgress } from "@src/learning-modules/progress-operations",
+  entities: [User, LearningModule, ModuleSection, UserProgress]
+}
+
+route ModuleManagementRoute { path: "/learning-modules", to: ModuleManagementPage }
+page ModuleManagementPage {
+  authRequired: true,
+  component: import ModuleManagement from "@src/learning-modules/ModuleManagementPage"
+}
+
+route ModuleBuilderRoute { path: "/learning-modules/builder/:moduleId?", to: ModuleBuilderPage }
+page ModuleBuilderPage {
+  authRequired: true,
+  component: import ModuleBuilder from "@src/learning-modules/ModuleBuilderPage"
+}
+
+route LearningViewerRoute { path: "/learning-modules/viewer/:moduleId", to: LearningViewerPage }
+page LearningViewerPage {
+  authRequired: true,
+  component: import LearningViewer from "@src/learning-modules/LearningViewerPage"
+}
+
+route ProgressDashboardRoute { path: "/progress-dashboard", to: ProgressDashboardPage }
+page ProgressDashboardPage {
+  authRequired: true,
+  component: import ProgressDashboard from "@src/learning-modules/ProgressDashboard"
+}
 //#endregion
 
 //#region Analytics
 query getDailyStats {
   fn: import { getDailyStats } from "@src/analytics/operations",
   entities: [User, DailyStats]
+}
+
+query getLearningAnalytics {
+  fn: import { getLearningAnalytics } from "@src/analytics/learning-analytics",
+  entities: [User, LearningModule, ModuleAssignment, UserProgress, Organization]
+}
+
+query getUserEngagement {
+  fn: import { getUserEngagement } from "@src/analytics/learning-analytics", 
+  entities: [User, LearningModule, ModuleAssignment, UserProgress]
 }
 
 job dailyStatsJob {
@@ -252,21 +442,41 @@ job dailyStatsJob {
     cron: "0 * * * *" // every hour. useful in production
     // cron: "* * * * *" // every minute. useful for debugging
   },
-  entities: [User, DailyStats, Logs, PageViewSource]
+  entities: [User, DailyStats, Logs, PageViewSource, LearningModule, ModuleAssignment, UserProgress]
+}
+
+job processPDFJob {
+  executor: PgBoss,
+  perform: {
+    fn: import { processPDFJob } from "@src/pdf-processing/jobs"
+  },
+  entities: [User, LearningModule, ModuleSection]
 }
 //#endregion
 
 //#region Admin Dashboard
-route AdminRoute { path: "/admin", to: AnalyticsDashboardPage }
+route AdminRoute { path: "/admin", to: EnhancedAnalyticsDashboardPage }
+page EnhancedAnalyticsDashboardPage {
+  authRequired: true,
+  component: import EnhancedAnalyticsDashboard from "@src/admin/dashboards/analytics/EnhancedAnalyticsDashboard"
+}
+
+route AdminAnalyticsRoute { path: "/admin/analytics", to: AnalyticsDashboardPage }
 page AnalyticsDashboardPage {
   authRequired: true,
   component: import AnalyticsDashboardPage from "@src/admin/dashboards/analytics/AnalyticsDashboardPage"
 }
 
+route AdminEngagementRoute { path: "/admin/engagement", to: UserEngagementDashboardPage }
+page UserEngagementDashboardPage {
+  authRequired: true,
+  component: import UserEngagementDashboard from "@src/admin/dashboards/analytics/UserEngagementDashboard"
+}
+
 route AdminUsersRoute { path: "/admin/users", to: AdminUsersPage }
 page AdminUsersPage {
   authRequired: true,
-  component: import AdminUsers from "@src/admin/dashboards/users/UsersDashboardPage"
+  component: import AdminUsers from "@src/admin/dashboards/users/EnhancedUsersDashboardPage"
 }
 
 route AdminSettingsRoute { path: "/admin/settings", to: AdminSettingsPage }
@@ -302,5 +512,17 @@ route AdminMessagesRoute { path: "/admin/messages", to: AdminMessagesPage }
 page AdminMessagesPage {
   authRequired: true,
   component: import AdminMessages from "@src/messages/MessagesPage"
+}
+
+route AdminLearningModulesRoute { path: "/admin/learning/modules", to: AdminLearningModulesPage }
+page AdminLearningModulesPage {
+  authRequired: true,
+  component: import AdminLearningModules from "@src/admin/dashboards/learning/LearningModulesDashboard"
+}
+
+route AdminLearningProgressRoute { path: "/admin/learning/progress", to: AdminLearningProgressPage }
+page AdminLearningProgressPage {
+  authRequired: true,
+  component: import AdminLearningProgress from "@src/admin/dashboards/learning/LearningProgressDashboard"
 }
 //#endregion

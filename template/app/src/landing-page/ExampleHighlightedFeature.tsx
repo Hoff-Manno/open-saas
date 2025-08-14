@@ -5,8 +5,8 @@ import aiReady from '../client/static/assets/aiready.webp';
 export default function AIReady() {
   return (
     <HighlightedFeature
-      name='Example Feature Highlight'
-      description='Yo! Use this component to show off the most important features in your app.'
+      name='AI-Powered PDF Processing'
+      description='Upload any PDF document and watch our AI transform it into an interactive learning module. Mozilla AI Docling handles complex layouts, tables, images, and even scanned documents with OCR technology.'
       highlightedComponent={<AIReadyExample />}
       direction='row-reverse'
     />

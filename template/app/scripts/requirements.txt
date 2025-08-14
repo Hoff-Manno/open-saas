@@ -1,0 +1,24 @@
+# Core Docling dependencies with enhanced AI features
+docling>=2.0.0
+
+# OCR engines (Docling will choose the best available)
+easyocr>=1.7.0
+pytesseract>=0.3.10
+rapidocr-onnxruntime>=1.3.0
+
+# Vision Language Model dependencies (for SmolDocling and VLM pipeline)
+transformers>=4.30.0
+torch>=2.0.0
+torchvision>=0.15.0
+pillow>=10.0.0
+numpy>=1.24.0
+
+# Additional ML dependencies for enhanced processing
+opencv-python>=4.8.0
+scipy>=1.10.0
+
+# PDF processing utilities
+pymupdf>=1.23.0
+
+# Text processing and analysis for content enrichment
+regex>=2023.6.3

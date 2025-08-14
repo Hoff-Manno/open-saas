@@ -9,7 +9,7 @@ import { Card, CardContent, CardFooter, CardTitle } from '../components/ui/card'
 import { cn } from '../lib/utils';
 import { PaymentPlanId, paymentPlans, prettyPaymentPlanName, SubscriptionStatus } from './plans';
 
-const bestDealPaymentPlanId: PaymentPlanId = PaymentPlanId.Pro;
+const bestDealPaymentPlanId: PaymentPlanId = PaymentPlanId.Professional;
 
 interface PaymentPlanCard {
   name: string;
@@ -19,23 +19,43 @@ interface PaymentPlanCard {
 }
 
 export const paymentPlanCards: Record<PaymentPlanId, PaymentPlanCard> = {
-  [PaymentPlanId.Hobby]: {
-    name: prettyPaymentPlanName(PaymentPlanId.Hobby),
-    price: '$9.99',
-    description: 'All you need to get started',
-    features: ['Limited monthly usage', 'Basic support'],
+  [PaymentPlanId.Starter]: {
+    name: prettyPaymentPlanName(PaymentPlanId.Starter),
+    price: '$29',
+    description: 'Perfect for small teams getting started',
+    features: [
+      'Up to 10 learning modules',
+      'Up to 25 team members',
+      'PDF to learning module conversion',
+      'Progress tracking & analytics',
+      'Email support'
+    ],
   },
-  [PaymentPlanId.Pro]: {
-    name: prettyPaymentPlanName(PaymentPlanId.Pro),
-    price: '$19.99',
-    description: 'Our most popular plan',
-    features: ['Unlimited monthly usage', 'Priority customer support'],
+  [PaymentPlanId.Professional]: {
+    name: prettyPaymentPlanName(PaymentPlanId.Professional),
+    price: '$99',
+    description: 'Our most popular plan for growing teams',
+    features: [
+      'Unlimited learning modules',
+      'Up to 100 team members',
+      'Advanced analytics & reporting',
+      'Team management & assignments',
+      'Priority support',
+      'Custom branding'
+    ],
   },
-  [PaymentPlanId.Credits10]: {
-    name: prettyPaymentPlanName(PaymentPlanId.Credits10),
-    price: '$9.99',
-    description: 'One-time purchase of 10 credits for your account',
-    features: ['Use credits for e.g. OpenAI API calls', 'No expiration date'],
+  [PaymentPlanId.Enterprise]: {
+    name: prettyPaymentPlanName(PaymentPlanId.Enterprise),
+    price: '$299',
+    description: 'For large organizations with advanced needs',
+    features: [
+      'Unlimited everything',
+      'API access for integrations',
+      'Advanced security features',
+      'Custom integrations',
+      'Dedicated account manager',
+      'SLA guarantee'
+    ],
   },
 };
 
@@ -109,10 +129,10 @@ const PricingPage = () => {
           </h2>
         </div>
         <p className='mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-muted-foreground'>
-          Choose between Stripe and LemonSqueezy as your payment provider. Just add your Product IDs! Try it
-          out below with test credit card number <br />
-          <span className='px-2 py-1 bg-muted rounded-md text-muted-foreground font-mono text-sm'>
-            4242 4242 4242 4242 4242
+          Transform your PDFs into interactive learning experiences. Choose the plan that fits your team size and needs.
+          <br />
+          <span className='text-sm text-muted-foreground mt-2 block'>
+            All plans include PDF processing, progress tracking, and team management
           </span>
         </p>
         {errorMessage && (

@@ -1,11 +1,25 @@
-import { LayoutDashboard, Settings, Shield } from 'lucide-react';
+import { LayoutDashboard, Settings, Shield, BookOpen, TrendingUp } from 'lucide-react';
 import { routes } from 'wasp/client/router';
 
 export const userMenuItems = [
   {
-    name: 'AI Scheduler (Demo App)',
-    to: routes.DemoAppRoute.to,
+    name: 'PDF Learning Dashboard',
+    to: routes.PDFLearningRoute.to,
     icon: LayoutDashboard,
+    isAdminOnly: false,
+    isAuthRequired: true,
+  },
+  {
+    name: 'Learning Modules',
+    to: routes.ModuleManagementRoute.to,
+    icon: BookOpen,
+    isAdminOnly: false,
+    isAuthRequired: true,
+  },
+  {
+    name: 'Progress Dashboard',
+    to: routes.ProgressDashboardRoute.to,
+    icon: TrendingUp,
     isAdminOnly: false,
     isAuthRequired: true,
   },

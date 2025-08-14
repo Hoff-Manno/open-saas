@@ -7,6 +7,9 @@ import {
   Settings,
   Sheet,
   X,
+  BookOpen,
+  BarChart3,
+  Users2,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -136,6 +139,100 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 </NavLink>
               </li>
               {/* <!-- Menu Item Users --> */}
+
+              {/* <!-- Menu Item Learning Management --> */}
+              <SidebarLinkGroup activeCondition={pathname.includes('/admin/learning') || pathname.includes('/admin/engagement') || pathname.includes('/admin/analytics')}>
+                {(handleClick, open) => {
+                  return (
+                    <React.Fragment>
+                      <NavLink
+                        to='#'
+                        className={cn(
+                          'group relative flex items-center gap-2.5 rounded-sm py-2 px-4 font-medium text-muted-foreground duration-300 ease-in-out hover:bg-accent hover:text-accent-foreground',
+                          {
+                            'bg-accent text-accent-foreground': pathname.includes('/admin/learning') || pathname.includes('/admin/engagement') || pathname.includes('/admin/analytics'),
+                          }
+                        )}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                        }}
+                      >
+                        <BookOpen />
+                        Learning Management
+                        {open ? <ChevronUp /> : <ChevronDown />}
+                      </NavLink>
+                      {/* <!-- Dropdown Menu Start --> */}
+                      <div className={cn('translate transform overflow-hidden', { hidden: !open })}>
+                        <ul className='mt-4 mb-5.5 flex flex-col gap-2.5 pl-6'>
+                          <li>
+                            <NavLink
+                              to='/admin/learning/modules'
+                              end
+                              className={({ isActive }) =>
+                                cn(
+                                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-muted-foreground duration-300 ease-in-out hover:text-accent',
+                                  { '!text-accent': isActive }
+                                )
+                              }
+                            >
+                              <BookOpen className='w-4 h-4' />
+                              Modules
+                            </NavLink>
+                          </li>
+                          <li>
+                            <NavLink
+                              to='/admin/learning/progress'
+                              end
+                              className={({ isActive }) =>
+                                cn(
+                                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-muted-foreground duration-300 ease-in-out hover:text-accent',
+                                  { '!text-accent': isActive }
+                                )
+                              }
+                            >
+                              <Users2 className='w-4 h-4' />
+                              Progress Tracking
+                            </NavLink>
+                          </li>
+                          <li>
+                            <NavLink
+                              to='/admin/analytics'
+                              end
+                              className={({ isActive }) =>
+                                cn(
+                                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-muted-foreground duration-300 ease-in-out hover:text-accent',
+                                  { '!text-accent': isActive }
+                                )
+                              }
+                            >
+                              <BarChart3 className='w-4 h-4' />
+                              Analytics
+                            </NavLink>
+                          </li>
+                          <li>
+                            <NavLink
+                              to='/admin/engagement'
+                              end
+                              className={({ isActive }) =>
+                                cn(
+                                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-muted-foreground duration-300 ease-in-out hover:text-accent',
+                                  { '!text-accent': isActive }
+                                )
+                              }
+                            >
+                              <Users2 className='w-4 h-4' />
+                              User Engagement
+                            </NavLink>
+                          </li>
+                        </ul>
+                      </div>
+                      {/* <!-- Dropdown Menu End --> */}
+                    </React.Fragment>
+                  );
+                }}
+              </SidebarLinkGroup>
+              {/* <!-- Menu Item Learning Management --> */}
 
               {/* <!-- Menu Item Settings --> */}
               <li>
