@@ -1,9 +1,10 @@
 // Processing Job for PDF files
 import { type ProcessPDFJob } from 'wasp/server/jobs';
 import { doclingService } from './doclingService';
+import { processPDFJob } from 'wasp/server/jobs'
 import { ProcessingError, ErrorCode } from '../shared/errors';
 import { healthChecker, AlertLevel } from '../shared/monitoring';
-import { JobQueueOptimizer, JobMonitoring } from '../performance/jobs';
+import { JobQueueOptimizer, JobMonitoring, JobRetryStrategies } from '../performance/jobs';
 import { DoclingOptimizer } from '../performance/docling-config';
 import { cache, CacheKeys, CacheInvalidation } from '../performance/caching';
 import { CDNOptimizer } from '../performance/cdn';
@@ -240,9 +241,11 @@ export const processPDFJob: ProcessPDFJob<
     if (shouldRetry) {
       console.log(`Scheduling retry ${retryCount + 2}/${maxRetries + 1} for module ${moduleId}`);
       
-      // TODO: Schedule retry job with exponential backoff
-      // const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-      // await scheduleJob('processPDFJob', { ...args, retryCount: retryCount + 1 }, retryDelay);
+      // Schedule retry job with exponential backoff using Wasp job API
+      const delaySeconds = JobRetryStrategies.exponentialBackoff(retryCount + 1, 60);
+      await (processPDFJob
+        .delay(delaySeconds)
+        .submit({ ...args, retryCount: retryCount + 1 }));
       
       return { 
         success: false, 

@@ -81,6 +81,9 @@ fly secrets set AWS_S3_IAM_ACCESS_KEY=AKIA... -a pdf-learning-saas-server
 fly secrets set AWS_S3_IAM_SECRET_KEY=... -a pdf-learning-saas-server
 fly secrets set AWS_S3_FILES_BUCKET=your-bucket-name -a pdf-learning-saas-server
 fly secrets set AWS_S3_REGION=us-east-1 -a pdf-learning-saas-server
+
+# Required base variables (Wasp sets DATABASE_URL/JWT_SECRET/URLs automatically during deploy)
+fly secrets set ADMIN_EMAILS=admin@yourdomain.com -a pdf-learning-saas-server
 ```
 
 ### 3. Set Up Production Webhooks

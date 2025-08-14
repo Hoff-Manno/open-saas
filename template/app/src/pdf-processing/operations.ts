@@ -3,6 +3,7 @@ import { HttpError } from 'wasp/server'
 import { type ProcessPDF, type GetProcessingStatus, type GetUserLearningModules, type RetryPDFProcessing, type CheckDoclingHealth } from 'wasp/server/operations'
 import * as z from 'zod'
 import { ensureArgsSchemaOrThrowHttpError } from '../server/validation'
+import { processPDFJob } from 'wasp/server/jobs'
 import { canUserCreateModule, getSubscriptionErrorMessage } from '../payment/subscriptionUtils'
 import { handleError, createHttpError, ErrorCode, ProcessingError } from '../shared/errors'
 import { validateSubscriptionLimits, validateFile } from '../shared/validation'
@@ -76,8 +77,13 @@ export const processPDF: ProcessPDF<
       { userId: context.user.id, fileName: args.fileName }
     );
     
-    // TODO: Queue background job for actual PDF processing
-    console.log(`Processing PDF: ${args.fileUrl} for user ${context.user.id}`);
+    // Submit background job for actual PDF processing
+    await processPDFJob.submit({
+      moduleId: module.id,
+      // NOTE: Using the provided fileUrl as filePath for now. Consider switching to S3 key fetching inside the job if URL expiry becomes an issue.
+      filePath: args.fileUrl,
+      userId: context.user.id,
+    });
     
     return { 
       success: true, 
